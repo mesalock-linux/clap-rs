@@ -2,6 +2,7 @@
 use std::fmt::Display;
 #[allow(deprecated, unused_imports)]
 use std::ascii::AsciiExt;
+use std::io::{Read, Write};
 
 // Internal
 use INTERNAL_ERROR_MSG;
@@ -15,13 +16,21 @@ use app::parser::{ParseResult, Parser};
 use fmt::{Colorizer, ColorizerOption};
 use app::usage;
 
-pub struct Validator<'a, 'b, 'z>(&'z mut Parser<'a, 'b>)
+pub struct Validator<'a, 'b, 'z, I, O, E>(&'z mut Parser<'a, 'b, I, O, E>)
 where
     'a: 'b,
-    'b: 'z;
+    'b: 'z,
+    I: Read + 'z,
+    O: Write + 'z,
+    E: Write + 'z;
 
-impl<'a, 'b, 'z> Validator<'a, 'b, 'z> {
-    pub fn new(p: &'z mut Parser<'a, 'b>) -> Self { Validator(p) }
+impl<'a, 'b, 'z, I, O, E> Validator<'a, 'b, 'z, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'z mut Parser<'a, 'b, I, O, E>) -> Self { Validator(p) }
 
     pub fn validate(
         &mut self,

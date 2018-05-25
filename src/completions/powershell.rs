@@ -1,19 +1,27 @@
 // Std
-use std::io::Write;
+use std::io::{Read, Write};
 
 // Internal
 use app::parser::Parser;
 use INTERNAL_ERROR_MSG;
 
-pub struct PowerShellGen<'a, 'b>
+pub struct PowerShellGen<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read + 'b,
+    O: Write + 'b,
+    E: Write + 'b,
 {
-    p: &'b Parser<'a, 'b>,
+    p: &'b Parser<'a, 'b, I, O, E>,
 }
 
-impl<'a, 'b> PowerShellGen<'a, 'b> {
-    pub fn new(p: &'b Parser<'a, 'b>) -> Self { PowerShellGen { p: p } }
+impl<'a, 'b, I, O, E> PowerShellGen<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'b Parser<'a, 'b, I, O, E>) -> Self { PowerShellGen { p: p } }
 
     pub fn generate_to<W: Write>(&self, buf: &mut W) {
         let bin_name = self.p.meta.bin_name.as_ref().unwrap();
@@ -67,11 +75,16 @@ fn get_tooltip<T : ToString>(help: Option<&str>, data: T) -> String {
     }
 }
 
-fn generate_inner<'a, 'b, 'p>(
-    p: &'p Parser<'a, 'b>,
+fn generate_inner<'a, 'b, 'p, I, O, E>(
+    p: &'p Parser<'a, 'b, I, O, E>,
     previous_command_name: &str,
     names: &mut Vec<&'p str>,
-) -> String {
+) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("PowerShellGen::generate_inner;");
     let command_name = if previous_command_name.is_empty() {
         p.meta.bin_name.as_ref().expect(INTERNAL_ERROR_MSG).clone()

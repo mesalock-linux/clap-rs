@@ -2,6 +2,9 @@
 #[cfg(feature = "yaml")]
 use yaml_rust::Yaml;
 
+// Std
+use std::io;
+
 // Internal
 use App;
 use ArgMatches;
@@ -46,7 +49,7 @@ impl<'a> SubCommand<'a> {
     ///         SubCommand::with_name("config"))
     /// # ;
     /// ```
-    pub fn with_name<'b>(name: &str) -> App<'a, 'b> { App::new(name) }
+    pub fn with_name<'b>(name: &str) -> App<'a, 'b, io::StdinLock<'b>, io::StdoutLock<'b>, io::StderrLock<'b>> { App::new(name) }
 
     /// Creates a new instance of a subcommand from a YAML (.yml) document
     ///

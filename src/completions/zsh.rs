@@ -1,5 +1,5 @@
 // Std
-use std::io::Write;
+use std::io::{Read, Write};
 #[allow(deprecated, unused_imports)]
 use std::ascii::AsciiExt;
 
@@ -10,15 +10,23 @@ use args::{AnyArg, ArgSettings};
 use completions;
 use INTERNAL_ERROR_MSG;
 
-pub struct ZshGen<'a, 'b>
+pub struct ZshGen<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read + 'b,
+    O: Write + 'b,
+    E: Write + 'b,
 {
-    p: &'b Parser<'a, 'b>,
+    p: &'b Parser<'a, 'b, I, O, E>,
 }
 
-impl<'a, 'b> ZshGen<'a, 'b> {
-    pub fn new(p: &'b Parser<'a, 'b>) -> Self {
+impl<'a, 'b, I, O, E> ZshGen<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'b Parser<'a, 'b, I, O, E>) -> Self {
         debugln!("ZshGen::new;");
         ZshGen { p: p }
     }
@@ -88,7 +96,12 @@ _{name} \"$@\"",
 // 	)
 // 	_describe -t commands 'rustup commands' commands "$@"
 //
-fn subcommand_details(p: &Parser) -> String {
+fn subcommand_details<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("ZshGen::subcommand_details;");
     // First we do ourself
     let mut ret = vec![
@@ -142,10 +155,20 @@ _{bin_name_underscore}_commands() {{
 // A snippet from rustup:
 // 		'show:Show the active and installed toolchains'
 //      'update:Update Rust toolchains'
-fn subcommands_of(p: &Parser) -> String {
+fn subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("ZshGen::subcommands_of;");
     let mut ret = vec![];
-    fn add_sc(sc: &App, n: &str, ret: &mut Vec<String>) {
+    fn add_sc<I, O, E>(sc: &App<I, O, E>, n: &str, ret: &mut Vec<String>)
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("ZshGen::add_sc;");
         let s = format!(
             "\"{name}:{help}\" \\",
@@ -208,7 +231,12 @@ fn subcommands_of(p: &Parser) -> String {
 //    [name_hyphen] = The full space delineated bin_name, but replace spaces with hyphens
 //    [repeat] = From the same recursive calls, but for all subcommands
 //    [subcommand_args] = The same as zsh::get_args_of
-fn get_subcommands_of(p: &Parser) -> String {
+fn get_subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("get_subcommands_of;");
 
     debugln!(
@@ -254,7 +282,12 @@ esac",
     )
 }
 
-fn parser_of<'a, 'b>(p: &'b Parser<'a, 'b>, sc: &str) -> &'b Parser<'a, 'b> {
+fn parser_of<'a, 'b, I, O, E>(p: &'b Parser<'a, 'b, I, O, E>, sc: &str) -> &'b Parser<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("parser_of: sc={}", sc);
     if sc == p.meta.bin_name.as_ref().unwrap_or(&String::new()) {
         return p;
@@ -282,7 +315,12 @@ fn parser_of<'a, 'b>(p: &'b Parser<'a, 'b>, sc: &str) -> &'b Parser<'a, 'b> {
 //    -C: modify the $context internal variable
 //    -s: Allow stacking of short args (i.e. -a -b -c => -abc)
 //    -S: Do not complete anything after '--' and treat those as argument values
-fn get_args_of(p: &Parser) -> String {
+fn get_args_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("get_args_of;");
     let mut ret = vec![String::from("_arguments \"${_arguments_options[@]}\" \\")];
     let opts = write_opts_of(p);
@@ -341,7 +379,12 @@ fn escape_value(string: &str) -> String {
         .replace(" ", "\\ ")
 }
 
-fn write_opts_of(p: &Parser) -> String {
+fn write_opts_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("write_opts_of;");
     let mut ret = vec![];
     for o in p.opts() {
@@ -396,7 +439,12 @@ fn write_opts_of(p: &Parser) -> String {
     ret.join("\n")
 }
 
-fn write_flags_of(p: &Parser) -> String {
+fn write_flags_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("write_flags_of;");
     let mut ret = vec![];
     for f in p.flags() {
@@ -444,7 +492,12 @@ fn write_flags_of(p: &Parser) -> String {
     ret.join("\n")
 }
 
-fn write_positionals_of(p: &Parser) -> String {
+fn write_positionals_of<I, O, E>(p: &Parser<I, O, E>) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("write_positionals_of;");
     let mut ret = vec![];
     for arg in p.positionals() {

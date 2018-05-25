@@ -3,6 +3,9 @@ use app::App;
 #[cfg(feature = "suggestions")]
 use strsim;
 
+// Std
+use std::io::{Read, Write};
+
 // Internal
 use fmt::Format;
 
@@ -42,14 +45,17 @@ where
 
 /// Returns a suffix that can be empty, or is the standard 'did you mean' phrase
 #[cfg_attr(feature = "lints", allow(needless_lifetimes))]
-pub fn did_you_mean_flag_suffix<'z, T, I>(
+pub fn did_you_mean_flag_suffix<'z, T, Iter, I, O, E>(
     arg: &str,
-    longs: I,
-    subcommands: &'z [App],
+    longs: Iter,
+    subcommands: &'z [App<I, O, E>],
 ) -> (String, Option<&'z str>)
 where
     T: AsRef<str> + 'z,
-    I: IntoIterator<Item = &'z T>,
+    Iter: IntoIterator<Item = &'z T>,
+    I: Read,
+    O: Write,
+    E: Write,
 {
     match did_you_mean(arg, longs) {
         Some(candidate) => {

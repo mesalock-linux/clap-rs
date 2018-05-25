@@ -6,10 +6,11 @@ mod validator;
 mod usage;
 
 // Std
+use std::cell::RefCell;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::io::{self, BufRead, BufWriter, Write};
+use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 use std::process;
 use std::rc::Rc;
@@ -57,15 +58,36 @@ use map::{self, VecMap};
 /// ```
 /// [`App::get_matches`]: ./struct.App.html#method.get_matches
 #[allow(missing_debug_implementations)]
-pub struct App<'a, 'b>
+pub struct App<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read,
+    O: Write,
+    E: Write,
 {
-    #[doc(hidden)] pub p: Parser<'a, 'b>,
+    #[doc(hidden)] pub p: Parser<'a, 'b, I, O, E>,
+    #[doc(hidden)] pub input: Option<Rc<RefCell<I>>>,
+    #[doc(hidden)] pub output: Option<Rc<RefCell<O>>>,
+    #[doc(hidden)] pub error: Option<Rc<RefCell<E>>>,
 }
 
+impl<'a, 'b, I, O, E> Clone for App<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    fn clone(&self) -> Self {
+        Self {
+            p: self.p.clone(),
+            input: self.input.clone(),
+            output: self.output.clone(),
+            error: self.error.clone(),
+        }
+    }
+}
 
-impl<'a, 'b> App<'a, 'b> {
+impl<'a, 'b> App<'a, 'b, io::StdinLock<'b>, io::StdoutLock<'b>, io::StderrLock<'b>> {
     /// Creates a new instance of an application requiring a name. The name may be, but doesn't
     /// have to be same as the binary. The name will be displayed to the user when they request to
     /// print version or help and usage information.
@@ -80,14 +102,11 @@ impl<'a, 'b> App<'a, 'b> {
     pub fn new<S: Into<String>>(n: S) -> Self {
         App {
             p: Parser::with_name(n.into()),
+            input: None,
+            output: None,
+            error: None,
         }
     }
-
-    /// Get the name of the app
-    pub fn get_name(&self) -> &str { &self.p.meta.name }
-
-    /// Get the name of the binary
-    pub fn get_bin_name(&self) -> Option<&str> { self.p.meta.bin_name.as_ref().map(|s| s.as_str()) }
 
     /// Creates a new instance of an application requiring a name, but uses the [`crate_authors!`]
     /// and [`crate_version!`] macros to fill in the [`App::author`] and [`App::version`] fields.
@@ -105,13 +124,52 @@ impl<'a, 'b> App<'a, 'b> {
     /// [`App::version`]: ./struct.App.html#method.author
     #[deprecated(since="2.14.1", note="Can never work; use explicit App::author() and App::version() calls instead")]
     pub fn with_defaults<S: Into<String>>(n: S) -> Self {
-        let mut a = App {
-            p: Parser::with_name(n.into()),
-        };
+        let mut a = Self::new(n);
         a.p.meta.author = Some("Kevin K. <kbknapp@gmail.com>");
         a.p.meta.version = Some("2.19.2");
         a
     }
+}
+
+impl<'a, 'b, I, O, E> App<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    /// Creates a new instance of an application requiring a name as well as the input/output/error
+    /// streams. The name may be, but doesn't have to be same as the binary. The name will be
+    /// displayed to the user when they request to print version or help and usage information.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use clap::{App, Arg};
+    /// # use std::io;
+    /// let stdin = io::stdin();
+    /// let stdout = io::stdout();
+    /// let stderr = io::stderr();
+    /// let prog = App::with_io("My Program", stdin.lock(), stdout.lock(), stderr.lock())
+    /// # ;
+    /// ```
+    pub fn with_io<S: Into<String>>(n: S, input: I, output: O, error: E) -> Self {
+        Self::with_io_opts(n, Some(Rc::new(RefCell::new(input))), Some(Rc::new(RefCell::new(output))), Some(Rc::new(RefCell::new(error))))
+    }
+
+    pub(crate) fn with_io_opts<S: Into<String>>(n: S, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) -> Self {
+        App {
+            p: Parser::with_name(n.into()),
+            input: input,
+            output: output,
+            error: error,
+        }
+    }
+
+    /// Get the name of the app
+    pub fn get_name(&self) -> &str { &self.p.meta.name }
+
+    /// Get the name of the binary
+    pub fn get_bin_name(&self) -> Option<&str> { self.p.meta.bin_name.as_ref().map(|s| s.as_str()) }
 
     /// Creates a new instance of [`App`] from a .yml (YAML) file. A full example of supported YAML
     /// objects can be found in [`examples/17_yaml.rs`] and [`examples/17_yaml.yml`]. One great use
@@ -1055,7 +1113,7 @@ impl<'a, 'b> App<'a, 'b> {
     /// ```
     /// [`SubCommand`]: ./struct.SubCommand.html
     /// [`App`]: ./struct.App.html
-    pub fn subcommand(mut self, subcmd: App<'a, 'b>) -> Self {
+    pub fn subcommand(mut self, subcmd: App<'a, 'b, I, O, E>) -> Self {
         self.p.add_subcommand(subcmd);
         self
     }
@@ -1076,9 +1134,9 @@ impl<'a, 'b> App<'a, 'b> {
     /// ```
     /// [`SubCommand`]: ./struct.SubCommand.html
     /// [`IntoIterator`]: https://doc.rust-lang.org/std/iter/trait.IntoIterator.html
-    pub fn subcommands<I>(mut self, subcmds: I) -> Self
+    pub fn subcommands<Iter>(mut self, subcmds: Iter) -> Self
     where
-        I: IntoIterator<Item = App<'a, 'b>>,
+        Iter: IntoIterator<Item = App<'a, 'b, I, O, E>>,
     {
         for subcmd in subcmds {
             self.p.add_subcommand(subcmd);
@@ -1162,10 +1220,15 @@ impl<'a, 'b> App<'a, 'b> {
         self.p.propagate_settings();
         self.p.derive_display_order();
 
-        self.p.create_help_and_version();
-        let out = io::stdout();
-        let mut buf_w = BufWriter::new(out.lock());
-        self.write_help(&mut buf_w)
+        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
+
+        if let Some(ref output) = self.output {
+            self.write_help(&mut *output.borrow_mut())
+        } else {
+            let out = io::stdout();
+            let res = self.write_help(&mut out.lock());
+            res
+        }
     }
 
     /// Prints the full help message to [`io::stdout()`] using a [`BufWriter`] using the same
@@ -1192,10 +1255,14 @@ impl<'a, 'b> App<'a, 'b> {
         self.p.propagate_settings();
         self.p.derive_display_order();
 
-        self.p.create_help_and_version();
-        let out = io::stdout();
-        let mut buf_w = BufWriter::new(out.lock());
-        self.write_long_help(&mut buf_w)
+        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
+        if let Some(output) = self.output.clone() {
+            self.write_long_help(&mut *output.borrow_mut())
+        } else {
+            let out = io::stdout();
+            let res = self.write_long_help(&mut out.lock());
+            res
+        }
     }
 
     /// Writes the full help message to the user to a [`io::Write`] object in the same method as if
@@ -1255,7 +1322,7 @@ impl<'a, 'b> App<'a, 'b> {
         self.p.propagate_globals();
         self.p.propagate_settings();
         self.p.derive_display_order();
-        self.p.create_help_and_version();
+        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
 
         Help::write_app_help(w, self, true)
     }
@@ -1320,8 +1387,9 @@ impl<'a, 'b> App<'a, 'b> {
     /// // src/cli.rs
     ///
     /// use clap::{App, Arg, SubCommand};
+    /// use std::io::{Read, Write};
     ///
-    /// pub fn build_cli() -> App<'static, 'static> {
+    /// pub fn build_cli() -> App<'static, 'static, impl Read, impl Write, impl Write> {
     ///     App::new("compl")
     ///         .about("Tests completions")
     ///         .arg(Arg::with_name("file")
@@ -1392,7 +1460,7 @@ impl<'a, 'b> App<'a, 'b> {
         out_dir: T,
     ) {
         self.p.meta.bin_name = Some(bin_name.into());
-        self.p.gen_completions(for_shell, out_dir.into());
+        self.p.gen_completions(for_shell, out_dir.into(), self.input.clone(), self.output.clone(), self.error.clone());
     }
 
 
@@ -1435,7 +1503,7 @@ impl<'a, 'b> App<'a, 'b> {
         buf: &mut W,
     ) {
         self.p.meta.bin_name = Some(bin_name.into());
-        self.p.gen_completions_to(for_shell, buf);
+        self.p.gen_completions_to(for_shell, buf, self.input.clone(), self.output.clone(), self.error.clone());
     }
 
     /// Starts the parsing process, upon a failed parse an error will be displayed to the user and
@@ -1505,9 +1573,9 @@ impl<'a, 'b> App<'a, 'b> {
     /// [`clap::Result`]: ./type.Result.html
     /// [`Vec`]: https://doc.rust-lang.org/std/vec/struct.Vec.html
     /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
-    pub fn get_matches_from<I, T>(mut self, itr: I) -> ArgMatches<'a>
+    pub fn get_matches_from<Iter, T>(mut self, itr: Iter) -> ArgMatches<'a>
     where
-        I: IntoIterator<Item = T>,
+        Iter: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         self.get_matches_from_safe_borrow(itr).unwrap_or_else(|e| {
@@ -1562,9 +1630,9 @@ impl<'a, 'b> App<'a, 'b> {
     /// [`Error::exit`]: ./struct.Error.html#method.exit
     /// [`kind`]: ./struct.Error.html
     /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
-    pub fn get_matches_from_safe<I, T>(mut self, itr: I) -> ClapResult<ArgMatches<'a>>
+    pub fn get_matches_from_safe<Iter, T>(mut self, itr: Iter) -> ClapResult<ArgMatches<'a>>
     where
-        I: IntoIterator<Item = T>,
+        Iter: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         self.get_matches_from_safe_borrow(itr)
@@ -1591,9 +1659,9 @@ impl<'a, 'b> App<'a, 'b> {
     /// [`App`]: ./struct.App.html
     /// [`App::get_matches_from_safe`]: ./struct.App.html#method.get_matches_from_safe
     /// [`AppSettings::NoBinaryName`]: ./enum.AppSettings.html#variant.NoBinaryName
-    pub fn get_matches_from_safe_borrow<I, T>(&mut self, itr: I) -> ClapResult<ArgMatches<'a>>
+    pub fn get_matches_from_safe_borrow<Iter, T>(&mut self, itr: Iter) -> ClapResult<ArgMatches<'a>>
     where
-        I: IntoIterator<Item = T>,
+        Iter: IntoIterator<Item = T>,
         T: Into<OsString> + Clone,
     {
         // If there are global arguments, or settings we need to propagate them down to subcommands
@@ -1630,7 +1698,7 @@ impl<'a, 'b> App<'a, 'b> {
         }
 
         // do the real parsing
-        if let Err(e) = self.p.get_matches_with(&mut matcher, &mut it.peekable()) {
+        if let Err(e) = self.p.get_matches_with(&mut matcher, &mut it.peekable(), self.input.clone(), self.output.clone(), self.error.clone()) {
             return Err(e);
         }
 
@@ -1782,11 +1850,12 @@ impl<'a> From<&'a Yaml> for App<'a, 'a> {
     }
 }
 
-impl<'a, 'b> Clone for App<'a, 'b> {
-    fn clone(&self) -> Self { App { p: self.p.clone() } }
-}
-
-impl<'n, 'e> AnyArg<'n, 'e> for App<'n, 'e> {
+impl<'n, 'e, I, O, E> AnyArg<'n, 'e> for App<'n, 'e, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     fn name(&self) -> &'n str {
         unreachable!("App struct does not support AnyArg::name, this is a bug!")
     }
@@ -1836,6 +1905,11 @@ impl<'n, 'e> AnyArg<'n, 'e> for App<'n, 'e> {
     }
 }
 
-impl<'n, 'e> fmt::Display for App<'n, 'e> {
+impl<'n, 'e, I, O, E> fmt::Display for App<'n, 'e, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { write!(f, "{}", self.p.meta.name) }
 }

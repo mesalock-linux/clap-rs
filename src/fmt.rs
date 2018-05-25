@@ -17,6 +17,8 @@ pub enum ColorWhen {
     Never,
 }
 
+// FIXME: this should check the actual raw fd rather than use atty (as it can't handle arbitrary
+//        streams)
 #[cfg(feature = "color")]
 pub fn is_a_tty(stderr: bool) -> bool {
     debugln!("is_a_tty: stderr={:?}", stderr);
@@ -34,7 +36,7 @@ pub fn is_a_tty(_: bool) -> bool {
     false
 }
 
-pub fn is_term_dumb() -> bool { env::var("TERM").ok() == Some(String::from("dumb")) }
+pub fn is_term_dumb() -> bool { env::var("TERM").ok().map_or(false, |val| val == "dumb") }
 
 #[doc(hidden)]
 pub struct ColorizerOption {

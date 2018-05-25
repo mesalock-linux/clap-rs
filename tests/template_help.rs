@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate regex;
 
+use std::io;
 use clap::{App, SubCommand};
 
 include!("../clap-test.rs");
@@ -103,7 +104,7 @@ fn template_author_version() {
 
 // ----------
 
-fn app_example1<'b, 'c>() -> App<'b, 'c> {
+fn app_example1<'b, 'c>() -> App<'b, 'c, io::StdinLock<'c>, io::StdoutLock<'c>, io::StderrLock<'c>> {
     App::new("MyApp")
         .version("1.0")
         .author("Kevin K. <kbknapp@gmail.com>")

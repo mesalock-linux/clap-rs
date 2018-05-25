@@ -3,6 +3,7 @@ extern crate clap;
 
 use clap::{App, Arg, SubCommand, Shell};
 use regex::Regex;
+use std::io;
 
 static BASH: &'static str = r#"_myapp() {
     local i cur prev opts cmds
@@ -616,9 +617,9 @@ fn compare(left: &str, right: &str) -> bool {
     b
 }
 
-fn build_app() -> App<'static, 'static> { build_app_with_name("myapp") }
+fn build_app() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> { build_app_with_name("myapp") }
 
-fn build_app_with_name(s: &'static str) -> App<'static, 'static> {
+fn build_app_with_name(s: &'static str) -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
     App::new(s)
         .about("Tests completions")
         .arg(Arg::with_name("file").help("some input file"))
@@ -630,7 +631,7 @@ fn build_app_with_name(s: &'static str) -> App<'static, 'static> {
                 .help("the case to test")))
 }
 
-fn build_app_special_commands() -> App<'static, 'static> {
+fn build_app_special_commands() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
     build_app_with_name("my_app")
         .subcommand(SubCommand::with_name("some_cmd")
                     .about("tests other things")
@@ -641,7 +642,7 @@ fn build_app_special_commands() -> App<'static, 'static> {
         .subcommand(SubCommand::with_name("some-cmd-with-hypens"))
 }
 
-fn build_app_special_help() -> App<'static, 'static> {
+fn build_app_special_help() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
     App::new("my_app")
         .arg(Arg::with_name("single-quotes")
             .long("single-quotes")

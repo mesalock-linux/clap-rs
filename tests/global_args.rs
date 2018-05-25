@@ -5,8 +5,9 @@ extern crate regex;
 mod tests {
     include!("../clap-test.rs");
     use clap::{App, Arg, SubCommand};
+    use std::io;
 
-    fn get_app() -> App<'static, 'static> {
+    fn get_app() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
         App::new("myprog")
             .arg(Arg::with_name("GLOBAL_ARG")
                 .long("global-arg")

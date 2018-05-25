@@ -51,7 +51,12 @@ where
 
 fn as_arg_trait<'a, 'b, T: ArgWithOrder<'a, 'b>>(x: &T) -> &ArgWithOrder<'a, 'b> { x }
 
-impl<'b, 'c> DispOrder for App<'b, 'c> {
+impl<'b, 'c, I, O, E> DispOrder for App<'b, 'c, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     fn disp_ord(&self) -> usize { 999 }
 }
 
@@ -130,14 +135,24 @@ impl<'a> Help<'a> {
 
     /// Reads help settings from an App
     /// and write its help to the wrapped stream.
-    pub fn write_app_help(w: &'a mut Write, app: &App, use_long: bool) -> ClapResult<()> {
+    pub fn write_app_help<I, O, E>(w: &'a mut Write, app: &App<I, O, E>, use_long: bool) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_app_help;");
         Self::write_parser_help(w, &app.p, use_long)
     }
 
     /// Reads help settings from a Parser
     /// and write its help to the wrapped stream.
-    pub fn write_parser_help(w: &'a mut Write, parser: &Parser, use_long: bool) -> ClapResult<()> {
+    pub fn write_parser_help<I, O, E>(w: &'a mut Write, parser: &Parser<I, O, E>, use_long: bool) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_parser_help;");
         Self::_write_parser_help(w, parser, false, use_long)
     }
@@ -145,18 +160,27 @@ impl<'a> Help<'a> {
     /// Reads help settings from a Parser
     /// and write its help to the wrapped stream which will be stderr. This method prevents
     /// formatting when required.
-    pub fn write_parser_help_to_stderr(w: &'a mut Write, parser: &Parser) -> ClapResult<()> {
+    pub fn write_parser_help_to_stderr<I, O, E>(w: &'a mut Write, parser: &Parser<I, O, E>) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,{
         debugln!("Help::write_parser_help;");
         Self::_write_parser_help(w, parser, true, false)
     }
 
     #[doc(hidden)]
-    pub fn _write_parser_help(
+    pub fn _write_parser_help<I, O, E>(
         w: &'a mut Write,
-        parser: &Parser,
+        parser: &Parser<I, O, E>,
         stderr: bool,
         use_long: bool,
-    ) -> ClapResult<()> {
+    ) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_parser_help;");
         let nlh = parser.is_set(AppSettings::NextLineHelp);
         let hide_v = parser.is_set(AppSettings::HidePossibleValuesInHelp);
@@ -178,7 +202,12 @@ impl<'a> Help<'a> {
     }
 
     /// Writes the parser help to the wrapped stream.
-    pub fn write_help(&mut self, parser: &Parser) -> ClapResult<()> {
+    pub fn write_help<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_help;");
         if let Some(h) = parser.meta.help_str {
             write!(self.writer, "{}", h).map_err(Error::from)?;
@@ -583,7 +612,12 @@ impl<'a> Help<'a> {
     /// including titles of a Parser Object to the wrapped stream.
     #[cfg_attr(feature = "lints", allow(useless_let_if_seq))]
     #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
-    pub fn write_all_args(&mut self, parser: &Parser) -> ClapResult<()> {
+    pub fn write_all_args<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_all_args;");
         let flags = parser.has_flags();
         let pos = parser
@@ -642,7 +676,12 @@ impl<'a> Help<'a> {
     }
 
     /// Writes help for subcommands of a Parser Object to the wrapped stream.
-    fn write_subcommands(&mut self, parser: &Parser) -> io::Result<()> {
+    fn write_subcommands<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_subcommands;");
         // The shortest an arg can legally be is 2 (i.e. '-x')
         self.longest = 2;
@@ -673,14 +712,24 @@ impl<'a> Help<'a> {
     }
 
     /// Writes version of a Parser Object to the wrapped stream.
-    fn write_version(&mut self, parser: &Parser) -> io::Result<()> {
+    fn write_version<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_version;");
         write!(self.writer, "{}", parser.meta.version.unwrap_or(""))?;
         Ok(())
     }
 
     /// Writes binary name of a Parser Object to the wrapped stream.
-    fn write_bin_name(&mut self, parser: &Parser) -> io::Result<()> {
+    fn write_bin_name<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_bin_name;");
         macro_rules! write_name {
             () => {{
@@ -703,7 +752,12 @@ impl<'a> Help<'a> {
     }
 
     /// Writes default help for a Parser Object to the wrapped stream.
-    pub fn write_default_help(&mut self, parser: &Parser) -> ClapResult<()> {
+    pub fn write_default_help<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_default_help;");
         if let Some(h) = parser.meta.pre_help {
             self.write_before_after_help(h)?;
@@ -890,7 +944,12 @@ impl<'a> Help<'a> {
     ///
     /// The template system is, on purpose, very simple. Therefore the tags have to written
     /// in the lowercase and without spacing.
-    fn write_templated_help(&mut self, parser: &Parser, template: &str) -> ClapResult<()> {
+    fn write_templated_help<I, O, E>(&mut self, parser: &Parser<I, O, E>, template: &str) -> ClapResult<()>
+    where
+        I: Read,
+        O: Write,
+        E: Write,
+    {
         debugln!("Help::write_templated_help;");
         let mut tmplr = Cursor::new(&template);
         let mut tag_buf = Cursor::new(vec![0u8; 15]);

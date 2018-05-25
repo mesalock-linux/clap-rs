@@ -4,6 +4,7 @@ extern crate regex;
 
 include!("../clap-test.rs");
 
+use std::io;
 use clap::{App, AppSettings, SubCommand, ErrorKind, Arg};
 
 static REQUIRE_DELIM_HELP: &'static str = "test 1.3
@@ -517,7 +518,7 @@ OPTIONS:
     -c, --cafe <FILE>    A coffeehouse, coffee shop, or café. [env: ENVVAR=MYVAL]
     -p, --pos <VAL>      Some vals [possible values: fast, slow]";
 
-fn setup() -> App<'static, 'static> {
+fn setup() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
     App::new("test")
         .author("Kevin K.")
         .about("tests stuff")
@@ -1052,7 +1053,7 @@ fn hidden_default_val() {
     assert!(test::compare_output(app2, "default --help", HIDE_DEFAULT_VAL, false));
 }
 
-fn issue_1112_setup() -> App<'static, 'static> {
+fn issue_1112_setup() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
     App::new("test")
         .author("Kevin K.")
         .about("tests stuff")

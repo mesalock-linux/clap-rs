@@ -392,6 +392,7 @@ impl Error {
 
     /// Prints the error to `stderr` and exits with a status of `1`
     pub fn exit(&self) -> ! {
+        // FIXME: XXXZXXXZZZZZ
         if self.use_stderr() {
             wlnerr!("{}", self.message);
             process::exit(1);

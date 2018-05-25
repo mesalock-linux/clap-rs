@@ -7,7 +7,7 @@ mod powershell;
 mod shell;
 
 // Std
-use std::io::Write;
+use std::io::{Read, Write};
 
 // Internal
 use app::parser::Parser;
@@ -17,15 +17,23 @@ use self::zsh::ZshGen;
 use self::powershell::PowerShellGen;
 pub use self::shell::Shell;
 
-pub struct ComplGen<'a, 'b>
+pub struct ComplGen<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read + 'b,
+    O: Write + 'b,
+    E: Write + 'b,
 {
-    p: &'b Parser<'a, 'b>,
+    p: &'b Parser<'a, 'b, I, O, E>,
 }
 
-impl<'a, 'b> ComplGen<'a, 'b> {
-    pub fn new(p: &'b Parser<'a, 'b>) -> Self { ComplGen { p: p } }
+impl<'a, 'b, I, O, E> ComplGen<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'b Parser<'a, 'b, I, O, E>) -> Self { ComplGen { p: p } }
 
     pub fn generate<W: Write>(&self, for_shell: Shell, buf: &mut W) {
         match for_shell {
@@ -43,7 +51,12 @@ impl<'a, 'b> ComplGen<'a, 'b> {
 //
 // Also note, aliases are treated as their own subcommands but duplicates of whatever they're
 // aliasing.
-pub fn all_subcommand_names(p: &Parser) -> Vec<String> {
+pub fn all_subcommand_names<I, O, E>(p: &Parser<I, O, E>) -> Vec<String>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("all_subcommand_names;");
     let mut subcmds: Vec<_> = subcommands_of(p)
         .iter()
@@ -63,7 +76,12 @@ pub fn all_subcommand_names(p: &Parser) -> Vec<String> {
 //
 // Also note, aliases are treated as their own subcommands but duplicates of whatever they're
 // aliasing.
-pub fn all_subcommands(p: &Parser) -> Vec<(String, String)> {
+pub fn all_subcommands<I, O, E>(p: &Parser<I, O, E>) -> Vec<(String, String)>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("all_subcommands;");
     let mut subcmds: Vec<_> = subcommands_of(p);
     for sc_v in p.subcommands.iter().map(|s| all_subcommands(&s.p)) {
@@ -78,7 +96,12 @@ pub fn all_subcommands(p: &Parser) -> Vec<(String, String)> {
 //
 // Also note, aliases are treated as their own subcommands but duplicates of whatever they're
 // aliasing.
-pub fn subcommands_of(p: &Parser) -> Vec<(String, String)> {
+pub fn subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> Vec<(String, String)>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!(
         "subcommands_of: name={}, bin_name={}",
         p.meta.name,
@@ -133,7 +156,12 @@ pub fn subcommands_of(p: &Parser) -> Vec<(String, String)> {
     subcmds
 }
 
-pub fn get_all_subcommand_paths(p: &Parser, first: bool) -> Vec<String> {
+pub fn get_all_subcommand_paths<I, O, E>(p: &Parser<I, O, E>, first: bool) -> Vec<String>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("get_all_subcommand_paths;");
     let mut subcmds = vec![];
     if !p.has_subcommands() {

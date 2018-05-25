@@ -1,18 +1,26 @@
 // Std
-use std::io::Write;
+use std::io::{Read, Write};
 
 // Internal
 use app::parser::Parser;
 
-pub struct FishGen<'a, 'b>
+pub struct FishGen<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read + 'b,
+    O: Write + 'b,
+    E: Write + 'b,
 {
-    p: &'b Parser<'a, 'b>,
+    p: &'b Parser<'a, 'b, I, O, E>,
 }
 
-impl<'a, 'b> FishGen<'a, 'b> {
-    pub fn new(p: &'b Parser<'a, 'b>) -> Self { FishGen { p: p } }
+impl<'a, 'b, I, O, E> FishGen<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'b Parser<'a, 'b, I, O, E>) -> Self { FishGen { p: p } }
 
     pub fn generate_to<W: Write>(&self, buf: &mut W) {
         let command = self.p.meta.bin_name.as_ref().unwrap();
@@ -25,7 +33,12 @@ impl<'a, 'b> FishGen<'a, 'b> {
 // Escape string inside single quotes
 fn escape_string(string: &str) -> String { string.replace("\\", "\\\\").replace("'", "\\'") }
 
-fn gen_fish_inner(root_command: &str, comp_gen: &FishGen, subcommand: &str, buffer: &mut String) {
+fn gen_fish_inner<I, O, E>(root_command: &str, comp_gen: &FishGen<I, O, E>, subcommand: &str, buffer: &mut String)
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("FishGen::gen_fish_inner;");
     // example :
     //

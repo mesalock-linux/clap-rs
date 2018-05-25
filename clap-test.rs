@@ -1,7 +1,7 @@
 #[allow(unused_imports, dead_code)]
 mod test {
     use std::str;
-    use std::io::{Cursor, Write};
+    use std::io::{self, Cursor, Write};
 
     use regex::Regex;
 
@@ -29,7 +29,7 @@ mod test {
         b
     }
 
-    pub fn compare_output(l: App, args: &str, right: &str, stderr: bool) -> bool {
+    pub fn compare_output(l: App<io::StdinLock, io::StdoutLock, io::StderrLock>, args: &str, right: &str, stderr: bool) -> bool {
         let mut buf = Cursor::new(Vec::with_capacity(50));
         let res = l.get_matches_from_safe(args.split(' ').collect::<Vec<_>>());
         let err = res.unwrap_err();
@@ -39,7 +39,7 @@ mod test {
         assert_eq!(stderr, err.use_stderr());
         compare(left, right)
     }
-    pub fn compare_output2(l: App, args: &str, right1: &str, right2: &str, stderr: bool) -> bool {
+    pub fn compare_output2(l: App<io::StdinLock, io::StdoutLock, io::StderrLock>, args: &str, right1: &str, right2: &str, stderr: bool) -> bool {
         let mut buf = Cursor::new(Vec::with_capacity(50));
         let res = l.get_matches_from_safe(args.split(' ').collect::<Vec<_>>());
         let err = res.unwrap_err();
@@ -52,7 +52,7 @@ mod test {
 
     // Legacy tests from the Python script days
 
-    pub fn complex_app() -> App<'static, 'static> {
+    pub fn complex_app() -> App<'static, 'static, io::StdinLock<'static>, io::StdoutLock<'static>, io::StderrLock<'static>> {
         let args = "-o --option=[opt]... 'tests options'
                     [positional] 'tests positionals'";
         let opt3_vals = ["fast", "slow"];

@@ -1,20 +1,28 @@
 // Std
-use std::io::Write;
+use std::io::{Read, Write};
 
 // Internal
 use app::parser::Parser;
 use args::OptBuilder;
 use completions;
 
-pub struct BashGen<'a, 'b>
+pub struct BashGen<'a, 'b, I, O, E>
 where
     'a: 'b,
+    I: Read + 'b,
+    O: Write + 'b,
+    E: Write + 'b,
 {
-    p: &'b Parser<'a, 'b>,
+    p: &'b Parser<'a, 'b, I, O, E>,
 }
 
-impl<'a, 'b> BashGen<'a, 'b> {
-    pub fn new(p: &'b Parser<'a, 'b>) -> Self { BashGen { p: p } }
+impl<'a, 'b, I, O, E> BashGen<'a, 'b, I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn new(p: &'b Parser<'a, 'b, I, O, E>) -> Self { BashGen { p: p } }
 
     pub fn generate_to<W: Write>(&self, buf: &mut W) {
         w!(

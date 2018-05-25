@@ -1,5 +1,6 @@
 // std
 use std::collections::{BTreeMap, VecDeque};
+use std::io::{Read, Write};
 
 // Internal
 use INTERNAL_ERROR_MSG;
@@ -10,7 +11,12 @@ use app::parser::Parser;
 
 // Creates a usage string for display. This happens just after all arguments were parsed, but before
 // any subcommands have been parsed (so as to give subcommands their own usage recursively)
-pub fn create_usage_with_title(p: &Parser, used: &[&str]) -> String {
+pub fn create_usage_with_title<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("usage::create_usage_with_title;");
     let mut usage = String::with_capacity(75);
     usage.push_str("USAGE:\n    ");
@@ -19,11 +25,16 @@ pub fn create_usage_with_title(p: &Parser, used: &[&str]) -> String {
 }
 
 // Creates a usage string to be used in error message (i.e. one with currently used args)
-pub fn create_error_usage<'a, 'b>(
-    p: &Parser<'a, 'b>,
+pub fn create_error_usage<'a, 'b, I, O, E>(
+    p: &Parser<'a, 'b, I, O, E>,
     matcher: &'b ArgMatcher<'a>,
     extra: Option<&str>,
-) -> String {
+) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     let mut args: Vec<_> = matcher
         .arg_names()
         .iter()
@@ -45,7 +56,12 @@ pub fn create_error_usage<'a, 'b>(
 }
 
 // Creates a usage string (*without title*) if one was not provided by the user manually.
-pub fn create_usage_no_title(p: &Parser, used: &[&str]) -> String {
+pub fn create_usage_no_title<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("usage::create_usage_no_title;");
     if let Some(u) = p.meta.usage_str {
         String::from(&*u)
@@ -57,7 +73,12 @@ pub fn create_usage_no_title(p: &Parser, used: &[&str]) -> String {
 }
 
 // Creates a usage string for display in help messages (i.e. not for errors)
-pub fn create_help_usage(p: &Parser, incl_reqs: bool) -> String {
+pub fn create_help_usage<I, O, E>(p: &Parser<I, O, E>, incl_reqs: bool) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     let mut usage = String::with_capacity(75);
     let name = p.meta
         .usage
@@ -163,7 +184,12 @@ pub fn create_help_usage(p: &Parser, incl_reqs: bool) -> String {
 
 // Creates a context aware usage string, or "smart usage" from currently used
 // args, and requirements
-fn create_smart_usage(p: &Parser, used: &[&str]) -> String {
+fn create_smart_usage<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("usage::smart_usage;");
     let mut usage = String::with_capacity(75);
     let mut hs: Vec<&str> = p.required().map(|s| &**s).collect();
@@ -188,7 +214,12 @@ fn create_smart_usage(p: &Parser, used: &[&str]) -> String {
 }
 
 // Gets the `[ARGS]` tag for the usage string
-fn get_args_tag(p: &Parser, incl_reqs: bool) -> Option<String> {
+fn get_args_tag<I, O, E>(p: &Parser<I, O, E>, incl_reqs: bool) -> Option<String>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("usage::get_args_tag;");
     let mut count = 0;
     'outer: for pos in p.positionals
@@ -284,7 +315,12 @@ fn get_args_tag(p: &Parser, incl_reqs: bool) -> Option<String> {
 }
 
 // Determines if we need the `[FLAGS]` tag in the usage string
-fn needs_flags_tag(p: &Parser) -> bool {
+fn needs_flags_tag<I, O, E>(p: &Parser<I, O, E>) -> bool
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!("usage::needs_flags_tag;");
     'outer: for f in &p.flags {
         debugln!("usage::needs_flags_tag:iter: f={};", f.b.name);
@@ -315,13 +351,18 @@ fn needs_flags_tag(p: &Parser) -> bool {
 }
 
 // Returns the required args in usage string form by fully unrolling all groups
-pub fn get_required_usage_from<'a, 'b>(
-    p: &Parser<'a, 'b>,
+pub fn get_required_usage_from<'a, 'b, I, O, E>(
+    p: &Parser<'a, 'b, I, O, E>,
     reqs: &[&'a str],
     matcher: Option<&ArgMatcher<'a>>,
     extra: Option<&str>,
     incl_last: bool,
-) -> VecDeque<String> {
+) -> VecDeque<String>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
     debugln!(
         "usage::get_required_usage_from: reqs={:?}, extra={:?}",
         reqs,
