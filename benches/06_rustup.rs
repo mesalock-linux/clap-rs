@@ -8,6 +8,7 @@ extern crate clap;
 extern crate test;
 
 use clap::{App, AppSettings, Arg, Shell, SubCommand, ArgGroup};
+use std::io::{BufRead, Write};
 
 use test::Bencher;
 
@@ -22,7 +23,7 @@ fn parse_subcommands(b: &mut Bencher) {
     b.iter(|| build_cli().get_matches_from(vec!["rustup override add stable"]));
 }
 
-pub fn build_cli() -> App<'static, 'static> {
+pub fn build_cli() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
     App::new("rustup")
         .version("0.9.0") // Simulating
         .about("The Rust toolchain installer")

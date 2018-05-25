@@ -1,5 +1,5 @@
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 #[allow(deprecated, unused_imports)]
 use std::ascii::AsciiExt;
 
@@ -13,7 +13,7 @@ use INTERNAL_ERROR_MSG;
 pub struct ZshGen<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read + 'b,
+    I: BufRead + 'b,
     O: Write + 'b,
     E: Write + 'b,
 {
@@ -22,7 +22,7 @@ where
 
 impl<'a, 'b, I, O, E> ZshGen<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -98,7 +98,7 @@ _{name} \"$@\"",
 //
 fn subcommand_details<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -157,7 +157,7 @@ _{bin_name_underscore}_commands() {{
 //      'update:Update Rust toolchains'
 fn subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -165,7 +165,7 @@ where
     let mut ret = vec![];
     fn add_sc<I, O, E>(sc: &App<I, O, E>, n: &str, ret: &mut Vec<String>)
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -233,7 +233,7 @@ where
 //    [subcommand_args] = The same as zsh::get_args_of
 fn get_subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -284,7 +284,7 @@ esac",
 
 fn parser_of<'a, 'b, I, O, E>(p: &'b Parser<'a, 'b, I, O, E>, sc: &str) -> &'b Parser<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -317,7 +317,7 @@ where
 //    -S: Do not complete anything after '--' and treat those as argument values
 fn get_args_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -381,7 +381,7 @@ fn escape_value(string: &str) -> String {
 
 fn write_opts_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -441,7 +441,7 @@ where
 
 fn write_flags_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -494,7 +494,7 @@ where
 
 fn write_positionals_of<I, O, E>(p: &Parser<I, O, E>) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

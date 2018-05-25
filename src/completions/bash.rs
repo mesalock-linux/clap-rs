@@ -1,5 +1,5 @@
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use app::parser::Parser;
@@ -9,7 +9,7 @@ use completions;
 pub struct BashGen<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read + 'b,
+    I: BufRead + 'b,
     O: Write + 'b,
     E: Write + 'b,
 {
@@ -18,7 +18,7 @@ where
 
 impl<'a, 'b, I, O, E> BashGen<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

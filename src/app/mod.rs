@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt;
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, BufRead, Write};
 use std::path::Path;
 use std::process;
 use std::rc::Rc;
@@ -61,7 +61,7 @@ use map::{self, VecMap};
 pub struct App<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -73,7 +73,7 @@ where
 
 impl<'a, 'b, I, O, E> Clone for App<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -101,7 +101,7 @@ impl<'a, 'b> App<'a, 'b, io::StdinLock<'b>, io::StdoutLock<'b>, io::StderrLock<'
     /// ```
     pub fn new<S: Into<String>>(n: S) -> Self {
         App {
-            p: Parser::with_name(n.into()),
+            p: Parser::with_io(n.into(), None, None, None),
             input: None,
             output: None,
             error: None,
@@ -133,7 +133,7 @@ impl<'a, 'b> App<'a, 'b, io::StdinLock<'b>, io::StdoutLock<'b>, io::StderrLock<'
 
 impl<'a, 'b, I, O, E> App<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -158,7 +158,7 @@ where
 
     pub(crate) fn with_io_opts<S: Into<String>>(n: S, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) -> Self {
         App {
-            p: Parser::with_name(n.into()),
+            p: Parser::with_io(n.into(), input.clone(), output.clone(), error.clone()),
             input: input,
             output: output,
             error: error,
@@ -1113,7 +1113,10 @@ where
     /// ```
     /// [`SubCommand`]: ./struct.SubCommand.html
     /// [`App`]: ./struct.App.html
-    pub fn subcommand(mut self, subcmd: App<'a, 'b, I, O, E>) -> Self {
+    pub fn subcommand(mut self, mut subcmd: App<'a, 'b, I, O, E>) -> Self {
+        subcmd.input = self.input.clone();
+        subcmd.output = self.output.clone();
+        subcmd.error = self.error.clone();
         self.p.add_subcommand(subcmd);
         self
     }
@@ -1220,7 +1223,7 @@ where
         self.p.propagate_settings();
         self.p.derive_display_order();
 
-        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
+        self.p.create_help_and_version();
 
         if let Some(ref output) = self.output {
             self.write_help(&mut *output.borrow_mut())
@@ -1255,7 +1258,7 @@ where
         self.p.propagate_settings();
         self.p.derive_display_order();
 
-        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
+        self.p.create_help_and_version();
         if let Some(output) = self.output.clone() {
             self.write_long_help(&mut *output.borrow_mut())
         } else {
@@ -1322,7 +1325,7 @@ where
         self.p.propagate_globals();
         self.p.propagate_settings();
         self.p.derive_display_order();
-        self.p.create_help_and_version(self.input.clone(), self.output.clone(), self.error.clone());
+        self.p.create_help_and_version();
 
         Help::write_app_help(w, self, true)
     }
@@ -1387,9 +1390,9 @@ where
     /// // src/cli.rs
     ///
     /// use clap::{App, Arg, SubCommand};
-    /// use std::io::{Read, Write};
+    /// use std::io::{BufRead, Write};
     ///
-    /// pub fn build_cli() -> App<'static, 'static, impl Read, impl Write, impl Write> {
+    /// pub fn build_cli() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
     ///     App::new("compl")
     ///         .about("Tests completions")
     ///         .arg(Arg::with_name("file")
@@ -1460,7 +1463,7 @@ where
         out_dir: T,
     ) {
         self.p.meta.bin_name = Some(bin_name.into());
-        self.p.gen_completions(for_shell, out_dir.into(), self.input.clone(), self.output.clone(), self.error.clone());
+        self.p.gen_completions(for_shell, out_dir.into());
     }
 
 
@@ -1503,7 +1506,7 @@ where
         buf: &mut W,
     ) {
         self.p.meta.bin_name = Some(bin_name.into());
-        self.p.gen_completions_to(for_shell, buf, self.input.clone(), self.output.clone(), self.error.clone());
+        self.p.gen_completions_to(for_shell, buf);
     }
 
     /// Starts the parsing process, upon a failed parse an error will be displayed to the user and
@@ -1581,12 +1584,16 @@ where
         self.get_matches_from_safe_borrow(itr).unwrap_or_else(|e| {
             // Otherwise, write to stderr and exit
             if e.use_stderr() {
-                wlnerr!("{}", e.message);
+                wlnerr_io!(self.error, "{}", e.message);
                 if self.p.is_set(AppSettings::WaitOnError) {
-                    wlnerr!("\nPress [ENTER] / [RETURN] to continue...");
+                    wlnerr_io!(self.error, "\nPress [ENTER] / [RETURN] to continue...");
                     let mut s = String::new();
-                    let i = io::stdin();
-                    i.lock().read_line(&mut s).unwrap();
+                    if let Some(ref input) = self.input {
+                        input.borrow_mut().read_line(&mut s).unwrap();
+                    } else {
+                        let i = io::stdin();
+                        i.lock().read_line(&mut s).unwrap();
+                    }
                 }
                 drop(self);
                 drop(e);
@@ -1698,7 +1705,7 @@ where
         }
 
         // do the real parsing
-        if let Err(e) = self.p.get_matches_with(&mut matcher, &mut it.peekable(), self.input.clone(), self.output.clone(), self.error.clone()) {
+        if let Err(e) = self.p.get_matches_with(&mut matcher, &mut it.peekable()) {
             return Err(e);
         }
 
@@ -1852,7 +1859,7 @@ impl<'a> From<&'a Yaml> for App<'a, 'a> {
 
 impl<'n, 'e, I, O, E> AnyArg<'n, 'e> for App<'n, 'e, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -1907,7 +1914,7 @@ where
 
 impl<'n, 'e, I, O, E> fmt::Display for App<'n, 'e, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

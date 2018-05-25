@@ -820,7 +820,18 @@ macro_rules! impl_settings {
 macro_rules! wlnerr(
     ($($arg:tt)*) => ({
         use std::io::{Write, stderr};
-        writeln!(&mut stderr(), $($arg)*).ok();
+        writeln!(&mut stderr(), $($arg)*).ok()
+    })
+);
+
+macro_rules! wlnerr_io(
+    ($stream:expr, $($arg:tt)*) => ({
+        use std::io::{Write, stderr};
+        if let Some(ref err_stream) = $stream {
+            writeln!(&mut *err_stream.borrow_mut(), $($arg)*)
+        } else {
+            writeln!(&mut stderr(), $($arg)*)
+        }.ok()
     })
 );
 

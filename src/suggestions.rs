@@ -4,7 +4,7 @@ use app::App;
 use strsim;
 
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use fmt::Format;
@@ -53,7 +53,7 @@ pub fn did_you_mean_flag_suffix<'z, T, Iter, I, O, E>(
 where
     T: AsRef<str> + 'z,
     Iter: IntoIterator<Item = &'z T>,
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

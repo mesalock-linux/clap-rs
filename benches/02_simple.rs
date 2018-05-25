@@ -4,6 +4,7 @@ extern crate clap;
 extern crate test;
 
 use clap::{App, Arg};
+use std::io::{BufRead, Write};
 
 use test::Bencher;
 
@@ -27,7 +28,7 @@ fn build_app(b: &mut Bencher) {
 
 #[bench]
 fn add_flag(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 
@@ -36,7 +37,7 @@ fn add_flag(b: &mut Bencher) {
 
 #[bench]
 fn add_flag_ref(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 
@@ -48,7 +49,7 @@ fn add_flag_ref(b: &mut Bencher) {
 
 #[bench]
 fn add_opt(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 
@@ -57,7 +58,7 @@ fn add_opt(b: &mut Bencher) {
 
 #[bench]
 fn add_opt_ref(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 
@@ -69,7 +70,7 @@ fn add_opt_ref(b: &mut Bencher) {
 
 #[bench]
 fn add_pos(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 
@@ -78,7 +79,7 @@ fn add_pos(b: &mut Bencher) {
 
 #[bench]
 fn add_pos_ref(b: &mut Bencher) {
-    fn build_app() -> App<'static, 'static> {
+    fn build_app() -> App<'static, 'static, impl BufRead, impl Write, impl Write> {
         App::new("claptests")
     }
 

@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt::Display;
-use std::io::{self, Cursor, Read, Write};
+use std::io::{self, Cursor, BufRead, Read, Write};
 use std::usize;
 
 // Internal
@@ -53,7 +53,7 @@ fn as_arg_trait<'a, 'b, T: ArgWithOrder<'a, 'b>>(x: &T) -> &ArgWithOrder<'a, 'b>
 
 impl<'b, 'c, I, O, E> DispOrder for App<'b, 'c, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -137,7 +137,7 @@ impl<'a> Help<'a> {
     /// and write its help to the wrapped stream.
     pub fn write_app_help<I, O, E>(w: &'a mut Write, app: &App<I, O, E>, use_long: bool) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -149,7 +149,7 @@ impl<'a> Help<'a> {
     /// and write its help to the wrapped stream.
     pub fn write_parser_help<I, O, E>(w: &'a mut Write, parser: &Parser<I, O, E>, use_long: bool) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -162,7 +162,7 @@ impl<'a> Help<'a> {
     /// formatting when required.
     pub fn write_parser_help_to_stderr<I, O, E>(w: &'a mut Write, parser: &Parser<I, O, E>) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,{
         debugln!("Help::write_parser_help;");
@@ -177,7 +177,7 @@ impl<'a> Help<'a> {
         use_long: bool,
     ) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -204,7 +204,7 @@ impl<'a> Help<'a> {
     /// Writes the parser help to the wrapped stream.
     pub fn write_help<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -614,7 +614,7 @@ impl<'a> Help<'a> {
     #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
     pub fn write_all_args<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -678,7 +678,7 @@ impl<'a> Help<'a> {
     /// Writes help for subcommands of a Parser Object to the wrapped stream.
     fn write_subcommands<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -714,7 +714,7 @@ impl<'a> Help<'a> {
     /// Writes version of a Parser Object to the wrapped stream.
     fn write_version<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -726,7 +726,7 @@ impl<'a> Help<'a> {
     /// Writes binary name of a Parser Object to the wrapped stream.
     fn write_bin_name<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> io::Result<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -754,7 +754,7 @@ impl<'a> Help<'a> {
     /// Writes default help for a Parser Object to the wrapped stream.
     pub fn write_default_help<I, O, E>(&mut self, parser: &Parser<I, O, E>) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {
@@ -946,7 +946,7 @@ impl<'a> Help<'a> {
     /// in the lowercase and without spacing.
     fn write_templated_help<I, O, E>(&mut self, parser: &Parser<I, O, E>, template: &str) -> ClapResult<()>
     where
-        I: Read,
+        I: BufRead,
         O: Write,
         E: Write,
     {

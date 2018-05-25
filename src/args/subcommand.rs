@@ -3,7 +3,7 @@
 use yaml_rust::Yaml;
 
 // Std
-use std::io;
+use std::io::{BufRead, Write};
 
 // Internal
 use App;
@@ -49,7 +49,14 @@ impl<'a> SubCommand<'a> {
     ///         SubCommand::with_name("config"))
     /// # ;
     /// ```
-    pub fn with_name<'b>(name: &str) -> App<'a, 'b, io::StdinLock<'b>, io::StdoutLock<'b>, io::StderrLock<'b>> { App::new(name) }
+    pub fn with_name<'b, I, O, E>(name: &str) -> App<'a, 'b, I, O, E>
+    where
+        I: BufRead,
+        O: Write,
+        E: Write,
+    {
+        App::with_io_opts(name, None, None, None)
+    }
 
     /// Creates a new instance of a subcommand from a YAML (.yml) document
     ///

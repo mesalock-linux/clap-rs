@@ -1,6 +1,6 @@
 // std
 use std::collections::{BTreeMap, VecDeque};
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use INTERNAL_ERROR_MSG;
@@ -13,7 +13,7 @@ use app::parser::Parser;
 // any subcommands have been parsed (so as to give subcommands their own usage recursively)
 pub fn create_usage_with_title<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -31,7 +31,7 @@ pub fn create_error_usage<'a, 'b, I, O, E>(
     extra: Option<&str>,
 ) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -58,7 +58,7 @@ where
 // Creates a usage string (*without title*) if one was not provided by the user manually.
 pub fn create_usage_no_title<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -75,7 +75,7 @@ where
 // Creates a usage string for display in help messages (i.e. not for errors)
 pub fn create_help_usage<I, O, E>(p: &Parser<I, O, E>, incl_reqs: bool) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -186,7 +186,7 @@ where
 // args, and requirements
 fn create_smart_usage<I, O, E>(p: &Parser<I, O, E>, used: &[&str]) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -216,7 +216,7 @@ where
 // Gets the `[ARGS]` tag for the usage string
 fn get_args_tag<I, O, E>(p: &Parser<I, O, E>, incl_reqs: bool) -> Option<String>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -317,7 +317,7 @@ where
 // Determines if we need the `[FLAGS]` tag in the usage string
 fn needs_flags_tag<I, O, E>(p: &Parser<I, O, E>) -> bool
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -359,7 +359,7 @@ pub fn get_required_usage_from<'a, 'b, I, O, E>(
     incl_last: bool,
 ) -> VecDeque<String>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

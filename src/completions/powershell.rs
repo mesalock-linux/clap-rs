@@ -1,5 +1,5 @@
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use app::parser::Parser;
@@ -8,7 +8,7 @@ use INTERNAL_ERROR_MSG;
 pub struct PowerShellGen<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read + 'b,
+    I: BufRead + 'b,
     O: Write + 'b,
     E: Write + 'b,
 {
@@ -17,7 +17,7 @@ where
 
 impl<'a, 'b, I, O, E> PowerShellGen<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -81,7 +81,7 @@ fn generate_inner<'a, 'b, 'p, I, O, E>(
     names: &mut Vec<&'p str>,
 ) -> String
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

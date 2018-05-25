@@ -7,7 +7,7 @@ mod powershell;
 mod shell;
 
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use app::parser::Parser;
@@ -20,7 +20,7 @@ pub use self::shell::Shell;
 pub struct ComplGen<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read + 'b,
+    I: BufRead + 'b,
     O: Write + 'b,
     E: Write + 'b,
 {
@@ -29,7 +29,7 @@ where
 
 impl<'a, 'b, I, O, E> ComplGen<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -53,7 +53,7 @@ where
 // aliasing.
 pub fn all_subcommand_names<I, O, E>(p: &Parser<I, O, E>) -> Vec<String>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -78,7 +78,7 @@ where
 // aliasing.
 pub fn all_subcommands<I, O, E>(p: &Parser<I, O, E>) -> Vec<(String, String)>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -98,7 +98,7 @@ where
 // aliasing.
 pub fn subcommands_of<I, O, E>(p: &Parser<I, O, E>) -> Vec<(String, String)>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -158,7 +158,7 @@ where
 
 pub fn get_all_subcommand_paths<I, O, E>(p: &Parser<I, O, E>, first: bool) -> Vec<String>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

@@ -2,7 +2,7 @@
 use std::fmt::Display;
 #[allow(deprecated, unused_imports)]
 use std::ascii::AsciiExt;
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use INTERNAL_ERROR_MSG;
@@ -20,13 +20,13 @@ pub struct Validator<'a, 'b, 'z, I, O, E>(&'z mut Parser<'a, 'b, I, O, E>)
 where
     'a: 'b,
     'b: 'z,
-    I: Read + 'z,
+    I: BufRead + 'z,
     O: Write + 'z,
     E: Write + 'z;
 
 impl<'a, 'b, 'z, I, O, E> Validator<'a, 'b, 'z, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {

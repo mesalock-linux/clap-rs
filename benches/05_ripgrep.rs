@@ -14,7 +14,7 @@ use clap::{App, AppSettings, Arg, ArgSettings};
 
 use test::Bencher;
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::io::{Cursor, BufRead, Write};
 
 #[bench]
 fn build_app_short(b: &mut Bencher) { b.iter(|| app_short()); }
@@ -312,14 +312,19 @@ OPTIONS:
 {unified}";
 
 /// Build a clap application with short help strings.
-pub fn app_short() -> App<'static, 'static> { app(false, |k| USAGES[k].short) }
+pub fn app_short() -> App<'static, 'static, impl BufRead, impl Write, impl Write> { app(false, |k| USAGES[k].short) }
 
 /// Build a clap application with long help strings.
-pub fn app_long() -> App<'static, 'static> { app(true, |k| USAGES[k].long) }
+pub fn app_long() -> App<'static, 'static, impl BufRead, impl Write, impl Write> { app(true, |k| USAGES[k].long) }
 
 
 /// Build the help text of an application.
-fn build_help(app: &App) -> String {
+fn build_help<I, O, E>(app: &App<I, O, E>) -> String
+where
+    I: BufRead,
+    O: Write,
+    E: Write,
+{
     let mut buf = Cursor::new(Vec::with_capacity(50));
     app.write_help(&mut buf).unwrap();
     let content = buf.into_inner();
@@ -334,7 +339,7 @@ fn build_help(app: &App) -> String {
 ///
 /// This is an intentionally stand-alone module so that it can be used easily
 /// in a `build.rs` script to build shell completion files.
-fn app<F>(next_line_help: bool, doc: F) -> App<'static, 'static>
+fn app<F>(next_line_help: bool, doc: F) -> App<'static, 'static, impl BufRead, impl Write, impl Write>
     where F: Fn(&'static str) -> &'static str
 {
     let arg = |name| Arg::with_name(name).help(doc(name)).next_line_help(next_line_help);

@@ -5,19 +5,24 @@ extern crate test;
 
 use test::Bencher;
 
-use std::io::Cursor;
+use std::io::{Cursor, BufRead, Write};
 
 use clap::App;
 use clap::{Arg, SubCommand};
 
-fn build_help(app: &App) -> String {
+fn build_help<I, O, E>(app: &App<I, O, E>) -> String
+where
+    I: BufRead,
+    O: Write,
+    E: Write,
+{
     let mut buf = Cursor::new(Vec::with_capacity(50));
     app.write_help(&mut buf).unwrap();
     let content = buf.into_inner();
     String::from_utf8(content).unwrap()
 }
 
-fn app_example1<'b, 'c>() -> App<'b, 'c> {
+fn app_example1<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .version("1.0")
         .author("Kevin K. <kbknapp@gmail.com>")
@@ -30,14 +35,14 @@ fn app_example1<'b, 'c>() -> App<'b, 'c> {
             .arg_from_usage("-l, --list 'lists test values'"))
 }
 
-fn app_example2<'b, 'c>() -> App<'b, 'c> {
+fn app_example2<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .version("1.0")
         .author("Kevin K. <kbknapp@gmail.com>")
         .about("Does awesome things")
 }
 
-fn app_example3<'b, 'c>() -> App<'b, 'c> {
+fn app_example3<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .arg(Arg::with_name("debug")
             .help("turn on debugging information")
@@ -56,7 +61,7 @@ fn app_example3<'b, 'c>() -> App<'b, 'c> {
                           -i, --int=[IFACE] 'Set an interface to use'")
 }
 
-fn app_example4<'b, 'c>() -> App<'b, 'c> {
+fn app_example4<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .about("Parses an input file to do awesome things")
         .version("1.0")
@@ -75,7 +80,7 @@ fn app_example4<'b, 'c>() -> App<'b, 'c> {
             .required(true))
 }
 
-fn app_example5<'b, 'c>() -> App<'b, 'c> {
+fn app_example5<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp").arg(Arg::with_name("awesome")
         .help("turns up the awesome")
         .short("a")
@@ -85,7 +90,7 @@ fn app_example5<'b, 'c>() -> App<'b, 'c> {
         .conflicts_with("output"))
 }
 
-fn app_example6<'b, 'c>() -> App<'b, 'c> {
+fn app_example6<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .arg(Arg::with_name("input")
             .help("the input file to use")
@@ -98,7 +103,7 @@ fn app_example6<'b, 'c>() -> App<'b, 'c> {
             .index(2))
 }
 
-fn app_example7<'b, 'c>() -> App<'b, 'c> {
+fn app_example7<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .arg(Arg::with_name("config"))
         .arg(Arg::with_name("output"))
@@ -113,7 +118,7 @@ fn app_example7<'b, 'c>() -> App<'b, 'c> {
             .conflicts_with("output"))
 }
 
-fn app_example8<'b, 'c>() -> App<'b, 'c> {
+fn app_example8<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("MyApp")
         .arg(Arg::with_name("config"))
         .arg(Arg::with_name("output"))
@@ -128,7 +133,7 @@ fn app_example8<'b, 'c>() -> App<'b, 'c> {
             .conflicts_with("output"))
 }
 
-fn app_example10<'b, 'c>() -> App<'b, 'c> {
+fn app_example10<'b, 'c>() -> App<'b, 'c, impl BufRead, impl Write, impl Write> {
     App::new("myapp")
         .about("does awesome things")
         .arg(Arg::with_name("CONFIG")

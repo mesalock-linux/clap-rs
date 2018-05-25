@@ -392,13 +392,22 @@ impl Error {
 
     /// Prints the error to `stderr` and exits with a status of `1`
     pub fn exit(&self) -> ! {
-        // FIXME: XXXZXXXZZZZZ
         if self.use_stderr() {
             wlnerr!("{}", self.message);
             process::exit(1);
         }
         let out = io::stdout();
         writeln!(&mut out.lock(), "{}", self.message).expect("Error writing Error to stdout");
+        process::exit(0);
+    }
+
+    /// Prints the error to the given `stderr` and exits with a status of `1`
+    pub fn exit_with_io<O: Write, E: Write>(&self, mut output: O, mut error: E) -> ! {
+        if self.use_stderr() {
+            writeln!(error, "{}", self.message).ok();
+            process::exit(1);
+        }
+        writeln!(output, "{}", self.message).expect("Error writing Error to stdout");
         process::exit(0);
     }
 

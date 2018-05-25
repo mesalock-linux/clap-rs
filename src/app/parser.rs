@@ -2,7 +2,7 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{self, BufWriter, Read, Write};
+use std::io::{self, BufRead, Write};
 #[cfg(all(feature = "debug", not(target_arch = "wasm32")))]
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
@@ -50,7 +50,7 @@ pub enum ParseResult<'a> {
 pub struct Parser<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -71,12 +71,15 @@ where
     cache: Option<&'a str>,
     pub help_message: Option<&'a str>,
     pub version_message: Option<&'a str>,
+    input: Option<Rc<RefCell<I>>>,
+    output: Option<Rc<RefCell<O>>>,
+    error: Option<Rc<RefCell<E>>>,
     cur_idx: Cell<usize>,
 }
 
 impl<'a, 'b, I, O, E> Clone for Parser<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -99,6 +102,9 @@ where
             cache: self.cache.clone(),
             help_message: self.help_message.clone(),
             version_message: self.version_message.clone(),
+            input: self.input.clone(),
+            output: self.output.clone(),
+            error: self.error.clone(),
             cur_idx: self.cur_idx.clone(),
         }
     }
@@ -107,7 +113,7 @@ where
 // I, O, and E confused the compiler, so this needs to be defined manually
 impl<'a, 'b, I, O, E> Default for Parser<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -130,6 +136,9 @@ where
             cache: Default::default(),
             help_message: Default::default(),
             version_message: Default::default(),
+            input: None,
+            output: None,
+            error: None,
             cur_idx: Default::default(),
         }
     }
@@ -138,15 +147,18 @@ where
 impl<'a, 'b, I, O, E> Parser<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
-    pub fn with_name(n: String) -> Self {
+    pub fn with_io(n: String, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) -> Self {
         Parser {
             meta: AppMeta::with_name(n),
             g_settings: AppFlags::zeroed(),
             cur_idx: Cell::new(0),
+            input: input,
+            output: output,
+            error: error,
             ..Default::default()
         }
     }
@@ -167,9 +179,9 @@ where
         self.version_short = Some(c);
     }
 
-    pub fn gen_completions_to<W: Write>(&mut self, for_shell: Shell, buf: &mut W, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) {
+    pub fn gen_completions_to<W: Write>(&mut self, for_shell: Shell, buf: &mut W) {
         if !self.is_set(AS::Propagated) {
-            self.propagate_help_version(input, output, error);
+            self.propagate_help_version();
             self.build_bin_names();
             self.propagate_globals();
             self.propagate_settings();
@@ -179,7 +191,7 @@ where
         ComplGen::new(self).generate(for_shell, buf)
     }
 
-    pub fn gen_completions(&mut self, for_shell: Shell, od: OsString, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) {
+    pub fn gen_completions(&mut self, for_shell: Shell, od: OsString) {
         use std::error::Error;
 
         let out_dir = PathBuf::from(od);
@@ -195,7 +207,7 @@ where
             Err(why) => panic!("couldn't create completion file: {}", why.description()),
             Ok(file) => file,
         };
-        self.gen_completions_to(for_shell, &mut file, input, output, error)
+        self.gen_completions_to(for_shell, &mut file)
     }
 
     #[inline]
@@ -766,7 +778,7 @@ where
         (false, None)
     }
 
-    fn parse_help_subcommand<Iter, T>(&self, it: &mut Iter, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) -> ClapResult<ParseResult<'a>>
+    fn parse_help_subcommand<Iter, T>(&self, it: &mut Iter) -> ClapResult<ParseResult<'a>>
     where
         Iter: Iterator<Item = T>,
         T: Into<OsString>,
@@ -828,7 +840,7 @@ where
             sc.positionals.insert(1, pb);
             sc.settings = sc.settings | self.g_settings;
         } else {
-            sc.create_help_and_version(input, output, error);
+            sc.create_help_and_version();
         }
         if sc.meta.bin_name != self.meta.bin_name {
             sc.meta.bin_name = Some(format!("{} {}", bin_name, sc.meta.name));
@@ -903,9 +915,6 @@ where
         &mut self,
         matcher: &mut ArgMatcher<'a>,
         it: &mut Peekable<Iter>,
-        input: Option<Rc<RefCell<I>>>,
-        output: Option<Rc<RefCell<O>>>,
-        error: Option<Rc<RefCell<E>>>,
     ) -> ClapResult<()>
     where
         Iter: Iterator<Item = T>,
@@ -928,7 +937,7 @@ where
 
         // Next we create the `--help` and `--version` arguments and add them if
         // necessary
-        self.create_help_and_version(input.clone(), output.clone(), error.clone());
+        self.create_help_and_version();
 
         let mut subcmd_name: Option<String> = None;
         let mut needs_val_of: ParseResult<'a> = ParseResult::NotFound;
@@ -968,7 +977,7 @@ where
                             if is_match {
                                 let sc_name = sc_name.expect(INTERNAL_ERROR_MSG);
                                 if sc_name == "help" && self.is_set(AS::NeedsSubcommandHelp) {
-                                    self.parse_help_subcommand(it, input.clone(), output.clone(), error.clone())?;
+                                    self.parse_help_subcommand(it)?;
                                 }
                                 subcmd_name = Some(sc_name.to_owned());
                                 break;
@@ -1225,7 +1234,7 @@ where
                     .name
                     .clone()
             };
-            self.parse_subcommand(&*sc_name, matcher, it, input, output, error)?;
+            self.parse_subcommand(&*sc_name, matcher, it)?;
         } else if self.is_set(AS::SubcommandRequired) {
             let bn = self.meta.bin_name.as_ref().unwrap_or(&self.meta.name);
             return Err(Error::missing_subcommand(
@@ -1289,11 +1298,11 @@ where
         }
     }
 
-    fn propagate_help_version(&mut self, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) {
+    fn propagate_help_version(&mut self) {
         debugln!("Parser::propagate_help_version;");
-        self.create_help_and_version(input.clone(), output.clone(), error.clone());
+        self.create_help_and_version();
         for sc in &mut self.subcommands {
-            sc.p.propagate_help_version(input.clone(), output.clone(), error.clone());
+            sc.p.propagate_help_version();
         }
     }
 
@@ -1338,9 +1347,6 @@ where
         sc_name: &str,
         matcher: &mut ArgMatcher<'a>,
         it: &mut Peekable<Iter>,
-        input: Option<Rc<RefCell<I>>>,
-        output: Option<Rc<RefCell<O>>>,
-        error: Option<Rc<RefCell<E>>>,
     ) -> ClapResult<()>
     where
         Iter: Iterator<Item = T>,
@@ -1393,7 +1399,7 @@ where
                 sc.p.meta.name
             );
             debugln!("Parser::parse_subcommand: sc settings={:#?}", sc.p.settings);
-            sc.p.get_matches_with(&mut sc_matcher, it, input, output, error)?;
+            sc.p.get_matches_with(&mut sc_matcher, it)?;
             matcher.subcommand(SubCommand {
                 name: sc.p.meta.name.clone(),
                 matches: sc_matcher.into(),
@@ -1475,7 +1481,7 @@ where
         args.iter().map(|s| *s).collect()
     }
 
-    pub fn create_help_and_version(&mut self, input: Option<Rc<RefCell<I>>>, output: Option<Rc<RefCell<O>>>, error: Option<Rc<RefCell<E>>>) {
+    pub fn create_help_and_version(&mut self) {
         debugln!("Parser::create_help_and_version;");
         // name is "hclap_help" because flags are sorted by name
         if !self.contains_long("help") {
@@ -1521,9 +1527,9 @@ where
             && self.is_set(AS::NeedsSubcommandHelp)
         {
             debugln!("Parser::create_help_and_version: Building help");
-            if input.is_some() {
+            if self.input.is_some() {
                 self.subcommands.push(
-                    App::with_io_opts("help", input.clone(), output.clone(), error.clone())
+                    App::with_io_opts("help", self.input.clone(), self.output.clone(), self.error.clone())
                         .about("Prints this message or the help of the given subcommand(s)"),
                 );
             } else {
@@ -1614,9 +1620,14 @@ where
 
     fn _version(&self, use_long: bool) -> Error {
         debugln!("Parser::_version: ");
-        let out = io::stdout();
-        let mut buf_w = BufWriter::new(out.lock());
-        match self.print_version(&mut buf_w, use_long) {
+        let res = if let Some(ref output) = self.output {
+            self.print_version(&mut *output.borrow_mut(), use_long)
+        } else {
+            let out = io::stdout();
+            let mut out_locked = out.lock();
+            self.print_version(&mut out_locked, use_long)
+        };
+        match res {
             Err(e) => e,
             _ => Error {
                 message: String::new(),
@@ -1999,9 +2010,13 @@ where
     }
 
     pub fn print_help(&self) -> ClapResult<()> {
-        let out = io::stdout();
-        let mut buf_w = BufWriter::new(out.lock());
-        self.write_help(&mut buf_w)
+        if let Some(ref output) = self.output {
+            self.write_help(&mut *output.borrow_mut())
+        } else {
+            let out = io::stdout();
+            let mut out_locked = out.lock();
+            self.write_help(&mut out_locked)
+        }
     }
 
     pub fn write_help<W: Write>(&self, w: &mut W) -> ClapResult<()> {

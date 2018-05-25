@@ -1,5 +1,5 @@
 // Std
-use std::io::{Read, Write};
+use std::io::{BufRead, Write};
 
 // Internal
 use app::parser::Parser;
@@ -7,7 +7,7 @@ use app::parser::Parser;
 pub struct FishGen<'a, 'b, I, O, E>
 where
     'a: 'b,
-    I: Read + 'b,
+    I: BufRead + 'b,
     O: Write + 'b,
     E: Write + 'b,
 {
@@ -16,7 +16,7 @@ where
 
 impl<'a, 'b, I, O, E> FishGen<'a, 'b, I, O, E>
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
@@ -35,7 +35,7 @@ fn escape_string(string: &str) -> String { string.replace("\\", "\\\\").replace(
 
 fn gen_fish_inner<I, O, E>(root_command: &str, comp_gen: &FishGen<I, O, E>, subcommand: &str, buffer: &mut String)
 where
-    I: Read,
+    I: BufRead,
     O: Write,
     E: Write,
 {
